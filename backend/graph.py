@@ -71,7 +71,12 @@ builder.add_edge("filter_node", END)
 agent = builder.compile()
 result = agent.invoke(
     {
-        "query": "what are the best projects of the person",
+        "query": """Total Number of
+Shares
+Purchased as Part
+of Publicly
+Announced Plans or
+Program""",
         "optimized_query": "",
         "retrieved_data": "",
         "final_answer": "",
