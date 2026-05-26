@@ -34,6 +34,8 @@ def build_vector_db(pdfPath: str):
     )
     processed_docs = []
     for doc in loader.lazy_load():
+        if len(doc.page_content.strip()) < 30:
+            continue
 
         if doc.metadata.get("category") == "Table":
 
@@ -55,11 +57,11 @@ def build_vector_db(pdfPath: str):
 
 def retrieve(query: str):
 
-    results = vector_store.similarity_search(query)
-    # return results
-    return "\n\n".join([doc.page_content for doc in results])
+    results = vector_store.similarity_search(query,k=8)
+    return results
+    # return "\n\n".join([doc.page_content for doc in results])
 
 
 # build_vector_db("./APPLE.pdf")
 
-print(retrieve("reportable segment for 2025 2024 2023"))
+# print(retrieve("reportable segment for 2025 2024 2023"))
