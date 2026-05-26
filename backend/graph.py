@@ -24,12 +24,15 @@ def optimize_query_node(state: GraphState) -> GraphState:
 
 
 def retriever_node(state: GraphState) -> GraphState:
-    data = retrieve(state["optimized_query"])
-    return {"retrieved_data": data}
+    docs = retrieve(state["optimized_query"])
+    context = "\n\n".join(
+    [f"Page {d.metadata.get('page_number', 'NA')}: {d.page_content}" for d in docs]
+)
+    return {"retrieved_data": context}
 
 
 def filter_node(state: GraphState) -> GraphState:
-    response = retrieve_data_optimizer.invoke(
+    response = answer_agent.invoke(
         {
             "messages": [
                 {
@@ -71,15 +74,10 @@ builder.add_edge("filter_node", END)
 agent = builder.compile()
 result = agent.invoke(
     {
-        "query": """Total Number of
-Shares
-Purchased as Part
-of Publicly
-Announced Plans or
-Program""",
+        "query": """reportable segment for 2025 2024 2023""",
         "optimized_query": "",
         "retrieved_data": "",
         "final_answer": "",
     }
 )
-print(result)
+print("result", result)

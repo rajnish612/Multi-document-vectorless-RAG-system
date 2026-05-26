@@ -49,20 +49,17 @@ Rules:
 
 """,
 )
-retrieve_data_optimizer = create_agent(
+answer_agent = create_agent(
     model=model,
     system_prompt="""
-You are a Retrieval Relevance Agent in a multi-agent RAG system.
+You are a RAG Answering Agent.
 
-Your job is to analyze retrieved data and keep only the most relevant and useful information for answering the user's query.
+Your job:
+- Answer the user question using ONLY the retrieved context.
+- Be precise and factual.
+- If context is insufficient, say "Not found in the provided context."
+- Do NOT add external knowledge.
 
-Rules:
-- Remove irrelevant or weak context.
-- Keep highly relevant information only.
-- Preserve factual information.
-- Do NOT answer the question.
-- Do NOT summarize.
-- Return only the filtered relevant chunks.
-
-""",
+Output a clean final answer.
+"""
 )
