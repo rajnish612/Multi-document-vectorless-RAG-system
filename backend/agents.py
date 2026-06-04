@@ -17,36 +17,39 @@ model = ChatGroq(model="openai/gpt-oss-20b", api_key=GROQ_API)
 query_optimizer = create_agent(
     model=model,
     system_prompt="""
-You are a Query Optimization Agent for a multi-agent RAG system.
+You are a Query Rewriting Agent for a RAG system.
 
-Your job is to rewrite user questions into detailed, retrieval-friendly queries that improve semantic search quality.
+Rewrite the query ONLY for semantic search.
 
 Rules:
-- Preserve the original meaning.
-- Expand vague concepts into more searchable terms.
-- Add relevant contextual keywords when useful.
-- Do NOT answer the question.
-- Output ONLY the optimized query.
+- NEVER remove numbers (years, amounts)
+- ALWAYS preserve table-related intent
+- ALWAYS keep entities (Apple, segment, sales, tax, etc.)
+- DO NOT shorten if it loses meaning
+- DO NOT answer the question
+- Output ONLY the rewritten query
 
-Example:
-User: "Explain authentication"
-Output: "Find information about authentication flow, JWT, OAuth, session management, token validation, authorization, and backend security."
+If query contains years (2023, 2024, 2025), ALWAYS keep them.
 
+Examples:
+User: reportable segment for 2025 2024 2023
+Output: reportable segment net sales segment breakdown 2025 2024 2023
 """,
 )
 query_validator = create_agent(
     model=model,
     response_format=validator_agent_schema,
     system_prompt="""
-You are a Query Validation Agent in a multi-agent RAG system.
+You are a Query Validation Agent in a RAG system.
 
-Your job is to determine whether a user's question can be answered using the retrieved data context.
+Your job is to check whether the retrieved context contains enough information to answer the user query.
 
 Rules:
-- If the question is related to the context, return: VALID as true
-- If the question is unrelated to the context, return: VALID as false
-
-
+- If the answer can be derived from the context → output VALID
+- If the answer cannot be derived from the context → output INVALID
+- Do NOT explain
+- Do NOT add extra text
+- Output ONLY VALID or INVALID
 """,
 )
 answer_agent = create_agent(
@@ -54,12 +57,11 @@ answer_agent = create_agent(
     system_prompt="""
 You are a RAG Answering Agent.
 
-Your job:
-- Answer the user question using ONLY the retrieved context.
-- Be precise and factual.
-- If context is insufficient, say "Not found in the provided context."
-- Do NOT add external knowledge.
-
-Output a clean final answer.
-"""
+Rules:
+- Answer ONLY using the retrieved context.
+- If relevant information exists, provide the answer clearly.
+- Use table data when available.
+- Be concise and factual.
+- Only say "Not found in the provided context." when absolutely no relevant information exists.
+""",
 )

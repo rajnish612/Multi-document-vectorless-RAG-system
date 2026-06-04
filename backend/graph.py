@@ -31,7 +31,7 @@ def retriever_node(state: GraphState) -> GraphState:
     return {"retrieved_data": context}
 
 
-def filter_node(state: GraphState) -> GraphState:
+def answer_node(state: GraphState) -> GraphState:
     response = answer_agent.invoke(
         {
             "messages": [
@@ -64,20 +64,19 @@ def validator_node(state: GraphState) -> Literal["VALID", "INVALID"]:
 
 builder.add_node("optimize_query_node", optimize_query_node)
 builder.add_node("retriever_node", retriever_node)
-builder.add_node("filter_node", filter_node)
+builder.add_node("answer_node", answer_node)
 builder.add_edge(START, "optimize_query_node")
 builder.add_edge("optimize_query_node", "retriever_node")
 builder.add_conditional_edges(
-    "retriever_node", validator_node, {"INVALID": END, "VALID": "filter_node"}
+    "retriever_node", validator_node, {"INVALID": END, "VALID": "answer_node"}
 )
-builder.add_edge("filter_node", END)
+builder.add_edge("answer_node", END)
 agent = builder.compile()
 result = agent.invoke(
     {
-        "query": """reportable segment for 2025 2024 2023""",
+        "query": """what is this pdf about""",
         "optimized_query": "",
         "retrieved_data": "",
         "final_answer": "",
     }
 )
-print("result", result)
