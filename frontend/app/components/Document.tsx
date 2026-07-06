@@ -33,6 +33,7 @@ export default function Documents() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const { setDocument } = useDocumentStore();
   const { getToken } = useAuth();
   const { SetComponent } = useComponentStore();
@@ -70,12 +71,15 @@ export default function Documents() {
 
   React.useEffect(() => {
     const getDocuments = async () => {
+      setIsFetching(true);
       const token = await getToken();
       try {
         const data = await getAllDocs(token);
         if (data.docs) setDocuments(data.docs);
       } catch (err) {
         console.log("err", err);
+      } finally {
+        setIsFetching(false);
       }
     };
     getDocuments();
@@ -198,8 +202,35 @@ export default function Documents() {
           ))}
         </div>
 
+        {/* ── Loading skeleton ── */}
+        {isFetching && (
+          <div className="flex flex-col">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="grid grid-cols-[1fr_100px_80px_60px] gap-4 px-5 py-4 border-b border-white/[0.06] last:border-0 items-center"
+              >
+                {/* Name skeleton */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/[0.06] animate-pulse shrink-0" />
+                  <div className="flex flex-col gap-2 flex-1">
+                    <div className="h-3 rounded-full bg-white/[0.06] animate-pulse w-3/5" style={{ animationDelay: `${i * 0.07}s` }} />
+                    <div className="h-2.5 rounded-full bg-white/[0.04] animate-pulse w-1/4" style={{ animationDelay: `${i * 0.07 + 0.1}s` }} />
+                  </div>
+                </div>
+                {/* Size skeleton */}
+                <div className="h-3 rounded-full bg-white/[0.06] animate-pulse w-12" style={{ animationDelay: `${i * 0.07}s` }} />
+                {/* Chat skeleton */}
+                <div className="h-7 rounded-lg bg-white/[0.06] animate-pulse w-16" style={{ animationDelay: `${i * 0.07}s` }} />
+                {/* Delete skeleton */}
+                <div className="h-8 w-8 rounded-lg bg-white/[0.06] animate-pulse" style={{ animationDelay: `${i * 0.07}s` }} />
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Empty state */}
-        {filtered.length === 0 && (
+        {!isFetching && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-slate-600">
             <AlertCircle size={32} className="mb-3 opacity-40" />
             <p className="text-sm">
@@ -209,7 +240,7 @@ export default function Documents() {
         )}
 
         {/* Rows */}
-        {filtered.map((doc, idx) => {
+        {!isFetching && filtered.map((doc, idx) => {
           const ext = getExt(doc.doc_name);
           const extColor = EXT_COLORS[ext] ?? "text-indigo-400 bg-indigo-400/10 border-indigo-400/20";
           const iconColor = EXT_ICON_COLORS[ext] ?? "text-indigo-400";
