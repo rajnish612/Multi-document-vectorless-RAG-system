@@ -2,7 +2,6 @@ from pageindex import PageIndexClient
 import json
 import bm25s
 import os
-from agents import answer_agent
 
 pi_client = PageIndexClient(os.getenv("PAGE_INDEX_API"))
 
@@ -76,8 +75,7 @@ def build_context(matched_nodes):
 
 
 def retriever(query, doc_id):
-    index_tree = get_index_tree(doc_id)
-    retrievel_tree = create_retrievel_tree(index_tree)
+    retrievel_tree = create_retrievel_tree(doc_id)
     flat_tree = flatten_tree(retrievel_tree)
     corpus = create_corpus(flat_tree)
 
@@ -86,7 +84,7 @@ def retriever(query, doc_id):
 
     retriever.index(corpus_tokens)
     query_tokens = bm25s.tokenize(query)
-    results, scores = retriever.retrieve(query_tokens, k=3)
+    results, scores = retriever.retrieve(query_tokens, k=5)
     matched_nodes = find_nodes_by_idx(flat_tree, results)
     context = build_context(matched_nodes)
     return context

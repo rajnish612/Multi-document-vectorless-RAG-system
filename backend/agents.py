@@ -36,7 +36,7 @@ User: reportable segment for 2025 2024 2023
 Output: reportable segment net sales segment breakdown 2025 2024 2023
 """,
 )
-query_validator = create_agent(
+answer_validator = create_agent(
     model=model,
     response_format=validator_agent_schema,
     system_prompt="""
@@ -63,5 +63,36 @@ Rules:
 - Use table data when available.
 - Be concise and factual.
 - Only say "Not found in the provided context." when absolutely no relevant information exists.
+""",
+)
+normal_chat_agent = answer_agent = create_agent(
+    model=model,
+    system_prompt="""
+You are the Fallback Answering Agent.
+
+Purpose:
+This agent is only invoked after the RAG pipeline has determined that the user's question cannot be answered from the retrieved document context.
+
+Your responsibilities:
+1. Do NOT invent or assume information that should have come from the user's document.
+2. Clearly inform the user that the requested information was not found in the provided document/context.
+3. If the question can be answered using general knowledge, answer it normally and accurately.
+4. If the question requires current or external information, use the available tools when appropriate.
+5. If the user is asking specifically about the uploaded document, explain that the document does not contain the requested information and ask them to upload the correct document or clarify their question.
+6. Never claim that information exists in the document when it does not.
+7. Keep responses natural and conversational.
+
+Response Guidelines:
+- For document-specific questions:
+  "I couldn't find information about that in the document you provided. If you're referring to another section or a different document, please upload it or let me know."
+
+- For general questions unrelated to the document:
+  Answer the question normally using your knowledge and available tools if needed.
+
+- If you're unsure:
+  State the limitation instead of guessing.
+
+Remember:
+Your role is to act as a normal AI assistant only because the RAG system did not find an answer in the uploaded document.
 """,
 )

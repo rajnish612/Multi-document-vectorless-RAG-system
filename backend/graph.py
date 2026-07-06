@@ -1,14 +1,19 @@
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, Literal
 from agents import *
-from ingest import retrieve
+from retriever import retriever
+from langchain_core.messages import HumanMessage
+from langgraph.graph.message import add_messages, AnyMessage
+from langgraph.checkpoint.memory import InMemorySaver
+from typing import Annotated
 
 
 class GraphState(TypedDict):
     query: str
     optimized_query: str
     retrieved_data: str
-    # filtered_data: str
+    messages: Annotated[list[AnyMessage], add_messages]
+    doc_id: str
     final_answer: str
 
 
@@ -16,67 +21,71 @@ builder = StateGraph(GraphState)
 
 
 def optimize_query_node(state: GraphState) -> GraphState:
-    response = query_optimizer.invoke(
-        {"messages": [{"role": "user", "content": f"QUERY: {state['query']}"}]}
-    )
+    message = HumanMessage(content=f"QUERY: {state['query']}")
 
-    return {"optimized_query": response["messages"][-1].content}
+    response = query_optimizer.invoke({"messages": state["messages"] + [message]})
+
+    return {
+        "optimized_query": response["messages"][-1].content,
+        "messages": [message, response["messages"][-1]],
+    }
 
 
 def retriever_node(state: GraphState) -> GraphState:
-    docs = retrieve(state["optimized_query"])
-    context = "\n\n".join(
-    [f"Page {d.metadata.get('page_number', 'NA')}: {d.page_content}" for d in docs]
-)
+    context = retriever(state["optimized_query"], state["doc_id"])
+
     return {"retrieved_data": context}
 
 
 def answer_node(state: GraphState) -> GraphState:
-    response = answer_agent.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": f"QUERY: {state['query']}   RETRIEVED_DATA: {state['retrieved_data']}",
-                }
-            ]
-        }
+    message = HumanMessage(
+        content=f"QUERY: {state['query']}   RETRIEVED_DATA: {state['retrieved_data']}"
     )
-    return {"final_answer": response["messages"][-1].content}
+
+    response = answer_agent.invoke({"messages": state["messages"] + [message]})
+
+    return {
+        "final_answer": response["messages"][-1].content,
+        "messages": [message, response["messages"][-1]],
+    }
 
 
 def validator_node(state: GraphState) -> Literal["VALID", "INVALID"]:
-    result = query_validator.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": f"QUERY: {state['query']}   RETRIEVED_DATA: {state['retrieved_data']}",
-                }
-            ]
-        }
-    )
+    messages = state["messages"] + [
+        HumanMessage(
+            content=f"QUERY: {state['query']}   RETRIEVED_DATA: {state['retrieved_data']}",
+        )
+    ]
+
+    result = answer_validator.invoke({"messages": messages})
+
     if "INVALID" in result["structured_response"].result:
         return "INVALID"
     else:
         return "VALID"
 
 
+def normal_chat_node(state: GraphState):
+    message = HumanMessage(content=state["query"])
+    response = answer_agent.invoke({"messages": state["messages"] + [message]})
+
+    return {
+        "final_answer": response["messages"][-1].content,
+        "messages": [message, response["messages"][-1]],
+    }
+
+
 builder.add_node("optimize_query_node", optimize_query_node)
 builder.add_node("retriever_node", retriever_node)
 builder.add_node("answer_node", answer_node)
+builder.add_node("normal_chat_node", normal_chat_node)
 builder.add_edge(START, "optimize_query_node")
 builder.add_edge("optimize_query_node", "retriever_node")
 builder.add_conditional_edges(
-    "retriever_node", validator_node, {"INVALID": END, "VALID": "answer_node"}
+    "retriever_node",
+    validator_node,
+    {"INVALID": "normal_chat_node", "VALID": "answer_node"},
 )
+builder.add_edge("normal_chat_node", END)
 builder.add_edge("answer_node", END)
-agent = builder.compile()
-result = agent.invoke(
-    {
-        "query": """what is this pdf about""",
-        "optimized_query": "",
-        "retrieved_data": "",
-        "final_answer": "",
-    }
-)
+agent = builder.compile(checkpointer=InMemorySaver())
