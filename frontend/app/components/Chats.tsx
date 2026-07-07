@@ -1,12 +1,20 @@
 "use client";
-import { Send, Paperclip, FileText, Sparkles, Bot, User, AlertCircle } from "lucide-react";
+import {
+  Send,
+  Paperclip,
+  FileText,
+  Sparkles,
+  Bot,
+  User,
+  AlertCircle,
+} from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { chat } from "../api/api";
+import { chat, getAllMessages } from "../api/api";
 import { useDocumentStore } from "../zustand/stores/DocumentStore";
 import { useComponentStore } from "../zustand/stores/ComponentStore";
 
-type Message = { id: string; role: "user" | "ai"; content: string };
+type Message = { id: string; role: "User" | "Assistant"; text: string };
 
 const SUGGESTIONS = [
   "Summarize the key findings",
@@ -18,8 +26,8 @@ const SUGGESTIONS = [
 export default function ChatInterface() {
   const { getToken } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const scrollRef    = useRef<HTMLDivElement>(null);
-  const [query, setQuery]       = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { selectedDoc } = useDocumentStore();
@@ -28,42 +36,63 @@ export default function ChatInterface() {
   const hasDoc = !!(selectedDoc?.doc_id && selectedDoc?.doc_name);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
   }, [messages, isLoading]);
 
   const handleSend = async () => {
     if (!query.trim() || !hasDoc) return;
     const token = await getToken();
-    const userMsg: Message = { id: Date.now().toString(), role: "user", content: query };
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: "User",
+      text: query,
+    };
     setMessages((prev) => [...prev, userMsg]);
     setQuery("");
     setIsLoading(true);
     try {
-      const data = await chat(token, "pi-cmpxt6mh203aw01qub020kffu", query);
-      console.log("data", data);
-      setMessages((prev) => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: "ai",
-        content: data?.answer ?? "Processing complete.",
-      }]);
+      const data = await chat(token, selectedDoc.doc_id, query);
+      console.log("data", data.data);
+      setMessages((prev) => [...prev, data.data]);
     } catch {
-      setMessages((prev) => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: "ai",
-        content: "Sorry, something went wrong. Please try again.",
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: "Assistant",
+          text: "Sorry, something went wrong. Please try again.",
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
-
+  useEffect(() => {
+    const fetchMessages = async () => {
+      const token = await getToken();
+      setIsLoading(true);
+      try {
+        const data = await getAllMessages(token, selectedDoc?.doc_id);
+        setMessages(data.data);
+      } catch (err) {
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchMessages();
+  }, [selectedDoc, getToken]);
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#0d0f1a]">
-
       {/* ── Header ── */}
       <div className="h-16 shrink-0 flex items-center justify-between px-7 border-b border-white/[0.08] bg-[#07080f]/60 backdrop-blur-xl">
         <div className="flex items-center gap-3.5">
@@ -71,8 +100,12 @@ export default function ChatInterface() {
             <Bot size={17} className="text-white" />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-100 leading-none">AI Assistant</p>
-            <p className="text-xs text-slate-500 mt-0.5">Ask questions about your documents</p>
+            <p className="text-sm font-bold text-slate-100 leading-none">
+              AI Assistant
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Ask questions about your documents
+            </p>
           </div>
         </div>
 
@@ -107,8 +140,10 @@ export default function ChatInterface() {
       </div>
 
       {/* ── Messages ── */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-7 py-7 flex flex-col gap-5">
-
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto px-7 py-7 flex flex-col gap-5"
+      >
         {/* Empty state */}
         {messages.length === 0 && !isLoading && (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-16 animate-fade-in">
@@ -119,7 +154,9 @@ export default function ChatInterface() {
               How can I help you today?
             </h2>
             <p className="text-sm text-slate-500 mb-9 max-w-xs leading-relaxed">
-              {hasDoc ? `Chatting with "${selectedDoc.doc_name}"` : "Select a document to start asking questions"}
+              {hasDoc
+                ? `Chatting with "${selectedDoc.doc_name}"`
+                : "Select a document to start asking questions"}
             </p>
 
             <div className="grid grid-cols-2 gap-3 w-full max-w-md">
@@ -140,11 +177,11 @@ export default function ChatInterface() {
         {messages.map((msg, idx) => (
           <div
             key={msg.id}
-            className={`flex gap-3 items-end animate-fade-in ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            className={`flex gap-3 items-end animate-fade-in ${msg.role === "User" ? "justify-end" : "justify-start"}`}
             style={{ animationDelay: `${idx * 0.02}s` }}
           >
             {/* AI avatar */}
-            {msg.role === "ai" && (
+            {msg.role === "Assistant" && (
               <div className="w-9 h-9 rounded-xl btn-gradient flex items-center justify-center shrink-0 shadow-[0_4px_16px_rgba(99,102,241,0.3)]">
                 <Bot size={15} className="text-white" />
               </div>
@@ -152,24 +189,27 @@ export default function ChatInterface() {
 
             <div className="flex flex-col gap-1.5 max-w-[68%]">
               {/* Source chip for AI */}
-              {msg.role === "ai" && hasDoc && (
+              {msg.role === "Assistant" && hasDoc && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 self-start">
                   <FileText size={9} /> {selectedDoc.doc_name}
                 </span>
               )}
-              <div className={`
+              <div
+                className={`
                 px-4 py-3.5 text-sm leading-relaxed
-                ${msg.role === "user"
-                  ? "rounded-[18px_18px_4px_18px] btn-gradient text-white shadow-[0_4px_20px_rgba(99,102,241,0.3)]"
-                  : "rounded-[4px_18px_18px_18px] bg-white/[0.04] border border-white/[0.08] text-slate-300"
+                ${
+                  msg.role === "User"
+                    ? "rounded-[18px_18px_4px_18px] btn-gradient text-white shadow-[0_4px_20px_rgba(99,102,241,0.3)]"
+                    : "rounded-[4px_18px_18px_18px] bg-white/[0.04] border border-white/[0.08] text-slate-300"
                 }
-              `}>
-                {msg.content}
+              `}
+              >
+                {msg.text}
               </div>
             </div>
 
             {/* User avatar */}
-            {msg.role === "user" && (
+            {msg.role === "User" && (
               <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
                 <User size={15} className="text-slate-500" />
               </div>
@@ -185,8 +225,11 @@ export default function ChatInterface() {
             </div>
             <div className="px-4 py-4 rounded-[4px_18px_18px_18px] bg-white/[0.04] border border-white/[0.08] flex items-center gap-1.5">
               {[0, 1, 2].map((i) => (
-                <span key={i} className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse-dot"
-                      style={{ animationDelay: `${i * 0.2}s` }} />
+                <span
+                  key={i}
+                  className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse-dot"
+                  style={{ animationDelay: `${i * 0.2}s` }}
+                />
               ))}
             </div>
           </div>
@@ -196,7 +239,6 @@ export default function ChatInterface() {
       {/* ── Input Area ── */}
       <div className="shrink-0 px-7 pb-6 pt-4 border-t border-white/[0.08] bg-[#07080f]/50 backdrop-blur-xl">
         <div className="max-w-3xl mx-auto">
-
           {/* No-doc warning */}
           {!hasDoc && (
             <button
@@ -209,20 +251,27 @@ export default function ChatInterface() {
           )}
 
           {/* Textarea box */}
-          <div className={`
+          <div
+            className={`
             rounded-2xl border overflow-hidden transition-all duration-200
-            ${hasDoc
-              ? "bg-white/[0.05] border-white/[0.09] focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10"
-              : "bg-white/[0.02] border-white/[0.05] opacity-50 pointer-events-none"
+            ${
+              hasDoc
+                ? "bg-white/[0.05] border-white/[0.09] focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10"
+                : "bg-white/[0.02] border-white/[0.05] opacity-50 pointer-events-none"
             }
-          `}>
+          `}
+          >
             <textarea
               id="chat-input"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={!hasDoc}
-              placeholder={hasDoc ? `Ask about "${selectedDoc?.doc_name}"…` : "Select a document to start chatting…"}
+              placeholder={
+                hasDoc
+                  ? `Ask about "${selectedDoc?.doc_name}"…`
+                  : "Select a document to start chatting…"
+              }
               rows={3}
               className="w-full resize-none bg-transparent outline-none px-5 pt-4 pb-3 text-sm text-slate-200 placeholder:text-slate-600 disabled:cursor-not-allowed"
             />
@@ -236,8 +285,16 @@ export default function ChatInterface() {
                 >
                   <Paperclip size={14} />
                 </button>
-                <span className="text-xs text-slate-600">PDF, DOCX, TXT · ⏎ to send</span>
-                <input ref={fileInputRef} type="file" multiple accept=".pdf,.doc,.docx,.txt" hidden />
+                <span className="text-xs text-slate-600">
+                  PDF, DOCX, TXT · ⏎ to send
+                </span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.txt"
+                  hidden
+                />
               </div>
 
               <button
@@ -246,9 +303,10 @@ export default function ChatInterface() {
                 disabled={!query.trim() || isLoading || !hasDoc}
                 className={`
                   w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200
-                  ${query.trim() && !isLoading && hasDoc
-                    ? "btn-gradient text-white shadow-[0_4px_16px_rgba(99,102,241,0.35)] hover:-translate-y-0.5 cursor-pointer"
-                    : "bg-white/[0.04] border border-white/[0.09] text-slate-600 cursor-not-allowed"
+                  ${
+                    query.trim() && !isLoading && hasDoc
+                      ? "btn-gradient text-white shadow-[0_4px_16px_rgba(99,102,241,0.35)] hover:-translate-y-0.5 cursor-pointer"
+                      : "bg-white/[0.04] border border-white/[0.09] text-slate-600 cursor-not-allowed"
                   }
                 `}
               >

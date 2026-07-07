@@ -7,6 +7,7 @@ from graph import agent
 from utils.psycopg import get_conn
 from typing import Annotated
 from services.document_service import DocumentService
+from services.message_service import MessageService
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Request, Response, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,6 +26,7 @@ app.add_middleware(
 clerk_client = Clerk(bearer_auth=os.getenv("CLERK_SECRET_KEY"))
 
 doc_service = DocumentService()
+message_service = MessageService()
 
 
 @app.middleware("http")
@@ -137,7 +139,7 @@ def read_item(request: Request):
 
 @app.post("/api/chat/{doc_id}")
 def chat(request: Request, doc_id, query):
-
+    user = request.state.user
     result = agent.invoke(
         {
             "query": query,
@@ -147,8 +149,32 @@ def chat(request: Request, doc_id, query):
             "messages": [],
             "doc_id": doc_id,
         },
-        {"configurable": {"thread_id": "1"}},
+        {"configurable": {"thread_id": user["user_id"]}},
     )
-    print(result["final_answer"])
+    message = message_service.save_message(
+        user["user_id"],
+        doc_id,
+        query,
+        result["final_answer"],
+    )
+    if not message:
+        raise HTTPException(404, detail="unable to send message")
+    return {
+        "data": message["assistant_message"],
+        "sucess": True,
+        "message": "successfully sent message",
+    }
 
-    return {"message": "hey"}
+
+@app.get("/api/chat/messages")
+def get_all_messages(request: Request, doc_id):
+    user = request.state.user
+    messages = message_service.get_messages(user["user_id"], doc_id)
+    if not messages:
+        raise HTTPException(422,detail="Unable to retrieve messages")
+    return {
+        "data": messages,
+        "sucess": True,
+        "message": "successfully sent message",
+    }
+ 

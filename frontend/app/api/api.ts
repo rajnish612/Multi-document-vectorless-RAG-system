@@ -50,3 +50,20 @@ export const chat = async (token, doc_id, query) => {
     throw err;
   }
 };
+
+export const getAllMessages = async (token, doc_id) => {
+  try {
+    const res = await axiosInstance.get(
+      `/api/chat/messages?doc_id=${doc_id}`,
+
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+    return res.data;
+  } catch (err) {
+    throw err;
+  }
+};
