@@ -2,7 +2,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 import tempfile
-from retriever import retriever
 from graph import agent
 from utils.psycopg import get_conn
 from typing import Annotated
@@ -124,7 +123,7 @@ async def retrieve_doc(request: Request, doc_id: str):
 
 
 @app.get("/api/docs")
-def read_item(request: Request):
+async def read_item(request: Request):
 
     user = request.state.user
     docs = doc_service.retrieve_all(user_id=user["user_id"])
@@ -134,6 +133,20 @@ def read_item(request: Request):
         "docs": docs,
         "success": True,
         "message": "documents retrieved successfully",
+    }
+
+
+@app.delete("/api/docs/{doc_id}")
+async def delete_doc(request: Request, doc_id: str):
+    user = request.state.user
+    deleted_rows = doc_service.delete_doc(doc_id=doc_id, user_id=user["user_id"])
+    if deleted_rows == 0:
+        raise HTTPException(404, detail="Document not found or already deleted")
+
+    return {
+        "doc_id": doc_id,
+        "success": True,
+        "message": "Document deleted successfully",
     }
 
 
@@ -171,10 +184,9 @@ def get_all_messages(request: Request, doc_id):
     user = request.state.user
     messages = message_service.get_messages(user["user_id"], doc_id)
     if not messages:
-        raise HTTPException(422,detail="Unable to retrieve messages")
+        raise HTTPException(422, detail="Unable to retrieve messages")
     return {
         "data": messages,
         "sucess": True,
         "message": "successfully sent message",
     }
- 

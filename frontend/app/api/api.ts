@@ -67,3 +67,15 @@ export const getAllMessages = async (token, doc_id) => {
     throw err;
   }
 };
+export const deleteDoc = async (token: string, doc_id: string) => {
+  try {
+    const res = await axiosInstance.delete(`/api/docs/${doc_id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return res.data;
+  } catch (err) {
+    throw err;
+  }
+};

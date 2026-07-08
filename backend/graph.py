@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, Literal
 from agents import *
-from retriever import retriever
+from utils.retriever import retriever
 from langchain_core.messages import HumanMessage
 from langgraph.graph.message import add_messages, AnyMessage
 from langgraph.checkpoint.memory import InMemorySaver

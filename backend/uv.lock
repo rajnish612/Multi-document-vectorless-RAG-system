@@ -221,6 +221,7 @@ dependencies = [
     { name = "pypdf" },
     { name = "python-magic" },
     { name = "python-multipart" },
+    { name = "redis" },
     { name = "sentence-transformers" },
     { name = "unstructured", extra = ["pdf"] },
     { name = "unstructured-client" },
@@ -256,6 +257,7 @@ requires-dist = [
     { name = "pypdf", specifier = ">=6.12.1" },
     { name = "python-magic", specifier = ">=0.4.27" },
     { name = "python-multipart", specifier = ">=0.0.32" },
+    { name = "redis", specifier = ">=8.0.1" },
     { name = "sentence-transformers", specifier = ">=5.5.1" },
     { name = "unstructured", extras = ["pdf"], specifier = ">=0.22.31" },
     { name = "unstructured-client", specifier = ">=0.44.0" },
@@ -4378,6 +4380,15 @@ dependencies = [
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ea/4a/fa521d947f0fc7bb304bf11bec4cb66266bd81494588b4cb48dc01001719/rapidocr-3.8.1-py3-none-any.whl", hash = "sha256:650044b1fbce9e6bae5cae462dcf8be754cde11e2f23fc51f65dcc08deae2c46", size = 15080319, upload-time = "2026-04-11T07:13:22.56Z" },
+]
+
+[[package]]
+name = "redis"
+version = "8.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/c3/928b290c2c0ca99ab96eea5b4ff8f30be8112b075301a7d3ba214a3c8c12/redis-8.0.1.tar.gz", hash = "sha256:afc5a7a2f5a084f5b1880dec548dd45be17db7e43c82a30d84f952aefb05cfb0", size = 5114170, upload-time = "2026-06-23T14:52:37.728Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fd/0a/c2345ebf1ebe70840ce3f6c6ee612f8fa749cfbd1b03069c53bf0c62aaad/redis-8.0.1-py3-none-any.whl", hash = "sha256:47daa35a058c23468d6437f17a8c76882cb316b838ef763036af99b96cedd743", size = 502406, upload-time = "2026-06-23T14:52:36.137Z" },
 ]
 
 [[package]]

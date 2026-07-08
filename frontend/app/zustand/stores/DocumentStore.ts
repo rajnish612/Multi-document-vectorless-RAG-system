@@ -8,7 +8,9 @@ type Doc = {
 interface DocumentStore {
   selectedDoc: Doc | null;
   setDocument: (doc: Doc) => void;
+  clearDocument: () => void;
 }
+
 export const useDocumentStore = create<DocumentStore>((set) => ({
   selectedDoc: null,
 
@@ -19,4 +21,6 @@ export const useDocumentStore = create<DocumentStore>((set) => ({
         doc_name: doc.doc_name,
       },
     }),
+
+  clearDocument: () => set({ selectedDoc: null }),
 }));

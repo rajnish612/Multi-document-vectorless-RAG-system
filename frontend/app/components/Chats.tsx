@@ -79,6 +79,7 @@ export default function ChatInterface() {
   };
   useEffect(() => {
     const fetchMessages = async () => {
+      if (!selectedDoc?.doc_id) return;
       const token = await getToken();
       setIsLoading(true);
       try {

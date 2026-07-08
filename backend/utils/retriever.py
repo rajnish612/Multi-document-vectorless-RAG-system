@@ -2,6 +2,8 @@ from pageindex import PageIndexClient
 import json
 import bm25s
 import os
+from agents import answer_agent
+from utils.redis import r
 
 pi_client = PageIndexClient(os.getenv("PAGE_INDEX_API"))
 
@@ -74,9 +76,39 @@ def build_context(matched_nodes):
     return context
 
 
+def _redis_get_flat_tree(doc_id: str) -> list | None:
+    try:
+        cached = r.get(f"flat_tree:{doc_id}")
+        if cached:
+            return json.loads(cached)
+    except Exception as e:
+        print(e)
+    return None
+
+
+def _redis_set_flat_tree(doc_id: str, flat_tree: list) -> None:
+    """Persist flat_tree to Redis with TTL. Silently ignores errors."""
+    try:
+        print("Writing to Redis:", f"flat_tree:{doc_id}")
+        r.set(
+            f"flat_tree:{doc_id}",
+            json.dumps(flat_tree),
+        )
+    except Exception as e:
+        print(e)
+        return None
+
+
 def retriever(query, doc_id):
-    retrievel_tree = create_retrievel_tree(doc_id)
-    flat_tree = flatten_tree(retrievel_tree)
+    index_tree = get_index_tree(doc_id)
+    flat_tree = ""
+    flat_tree = _redis_get_flat_tree(doc_id)
+    if not flat_tree:
+        retrievel_tree = create_retrievel_tree(index_tree)
+
+        flat_tree = flatten_tree(retrievel_tree)
+        _redis_set_flat_tree(doc_id, flat_tree)
+
     corpus = create_corpus(flat_tree)
 
     corpus_tokens = bm25s.tokenize(corpus)
@@ -84,7 +116,7 @@ def retriever(query, doc_id):
 
     retriever.index(corpus_tokens)
     query_tokens = bm25s.tokenize(query)
-    results, scores = retriever.retrieve(query_tokens, k=5)
+    results, scores = retriever.retrieve(query_tokens, k=3)
     matched_nodes = find_nodes_by_idx(flat_tree, results)
     context = build_context(matched_nodes)
     return context
