@@ -18,7 +18,7 @@ class DocumentService:
             conn = get_conn()
             with conn.cursor() as curr:
                 curr.execute(
-                    "INSERT INTO documents (user_id, doc_id,doc_name) VALUES (%s, %s, %s, %s) RETURNING *",
+                    "INSERT INTO documents (user_id, doc_id, doc_name) VALUES (%s, %s, %s) RETURNING *",
                     (
                         userId,
                         doc_id,

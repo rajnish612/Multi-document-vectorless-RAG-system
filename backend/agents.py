@@ -65,7 +65,7 @@ Rules:
 - Only say "Not found in the provided context." when absolutely no relevant information exists.
 """,
 )
-normal_chat_agent = answer_agent = create_agent(
+normal_chat_agent = create_agent(
     model=model,
     system_prompt="""
 You are the Fallback Answering Agent.

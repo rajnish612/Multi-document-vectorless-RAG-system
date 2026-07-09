@@ -51,9 +51,11 @@ def answer_node(state: GraphState) -> GraphState:
 
 
 def validator_node(state: GraphState) -> Literal["VALID", "INVALID"]:
-    messages = state["messages"] + [
+    # Pass only what the validator needs: the current query + retrieved context.
+    # The full chat history is irrelevant and adds noise to a binary decision.
+    messages = [
         HumanMessage(
-            content=f"QUERY: {state['query']}   RETRIEVED_DATA: {state['retrieved_data']}",
+            content=f"QUERY: {state['query']}\n\nRETRIEVED_DATA: {state['retrieved_data']}",
         )
     ]
 
@@ -67,7 +69,8 @@ def validator_node(state: GraphState) -> Literal["VALID", "INVALID"]:
 
 def normal_chat_node(state: GraphState):
     message = HumanMessage(content=state["query"])
-    response = answer_agent.invoke({"messages": state["messages"] + [message]})
+    # Use the fallback agent, not the RAG answer agent
+    response = normal_chat_agent.invoke({"messages": state["messages"] + [message]})
 
     return {
         "final_answer": response["messages"][-1].content,
