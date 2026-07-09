@@ -7,6 +7,7 @@ import {
   Bot,
   User,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
@@ -20,7 +21,7 @@ const SUGGESTIONS = [
   "Summarize the key findings",
   "What are the main topics?",
   "Find important insights",
-  "Compare documents",
+  "List key conclusions",
 ];
 
 export default function ChatInterface() {
@@ -29,21 +30,48 @@ export default function ChatInterface() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Separate loading states — history fetch vs AI response
+  const [isFetchingHistory, setIsFetchingHistory] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
   const { selectedDoc } = useDocumentStore();
   const { SetComponent } = useComponentStore();
 
   const hasDoc = !!(selectedDoc?.doc_id && selectedDoc?.doc_name);
 
+  // Auto-scroll to bottom on new messages or AI typing
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [messages, isLoading]);
+  }, [messages, isSending]);
+
+  // Fetch history whenever the selected document changes
+  const fetchMessages = async () => {
+    if (!selectedDoc?.doc_id) return;
+    setIsFetchingHistory(true);
+    setHistoryError(null);
+    try {
+      const token = await getToken();
+      const data = await getAllMessages(token, selectedDoc.doc_id);
+      setMessages(data.data ?? []);
+    } catch {
+      setHistoryError("Failed to load conversation history. Tap to retry.");
+    } finally {
+      setIsFetchingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    setMessages([]);
+    fetchMessages();
+  }, [selectedDoc?.doc_id]);
 
   const handleSend = async () => {
-    if (!query.trim() || !hasDoc) return;
+    if (!query.trim() || !hasDoc || isSending) return;
     const token = await getToken();
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -52,10 +80,9 @@ export default function ChatInterface() {
     };
     setMessages((prev) => [...prev, userMsg]);
     setQuery("");
-    setIsLoading(true);
+    setIsSending(true);
     try {
       const data = await chat(token, selectedDoc.doc_id, query);
-      console.log("data", data.data);
       setMessages((prev) => [...prev, data.data]);
     } catch {
       setMessages((prev) => [
@@ -67,7 +94,7 @@ export default function ChatInterface() {
         },
       ]);
     } finally {
-      setIsLoading(false);
+      setIsSending(false);
     }
   };
 
@@ -77,21 +104,7 @@ export default function ChatInterface() {
       handleSend();
     }
   };
-  useEffect(() => {
-    const fetchMessages = async () => {
-      if (!selectedDoc?.doc_id) return;
-      const token = await getToken();
-      setIsLoading(true);
-      try {
-        const data = await getAllMessages(token, selectedDoc?.doc_id);
-        setMessages(data.data);
-      } catch (err) {
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchMessages();
-  }, [selectedDoc, getToken]);
+
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#0d0f1a]">
       {/* ── Header ── */}
@@ -145,8 +158,49 @@ export default function ChatInterface() {
         ref={scrollRef}
         className="flex-1 overflow-y-auto px-7 py-7 flex flex-col gap-5"
       >
+        {/* History loading skeleton */}
+        {isFetchingHistory && (
+          <div className="flex flex-col gap-5 animate-fade-in">
+            {[1, 0.7, 0.9].map((w, i) => (
+              <div
+                key={i}
+                className={`flex gap-3 items-end ${i % 2 === 0 ? "justify-start" : "justify-end"}`}
+              >
+                {i % 2 === 0 && (
+                  <div className="w-9 h-9 rounded-xl bg-white/[0.06] shrink-0 animate-pulse" />
+                )}
+                <div
+                  className="h-10 rounded-2xl bg-white/[0.05] animate-pulse"
+                  style={{ width: `${w * 55}%`, animationDelay: `${i * 0.1}s` }}
+                />
+                {i % 2 !== 0 && (
+                  <div className="w-9 h-9 rounded-xl bg-white/[0.06] shrink-0 animate-pulse" />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* History error */}
+        {historyError && !isFetchingHistory && (
+          <div className="flex flex-col items-center justify-center py-10 gap-3 animate-fade-in">
+            <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+              <AlertCircle size={20} className="text-red-400" />
+            </div>
+            <p className="text-sm text-slate-500 text-center max-w-xs">
+              {historyError}
+            </p>
+            <button
+              onClick={fetchMessages}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.1] text-slate-300 text-xs font-semibold hover:bg-white/[0.09] transition-colors cursor-pointer"
+            >
+              <RefreshCw size={12} /> Retry
+            </button>
+          </div>
+        )}
+
         {/* Empty state */}
-        {messages.length === 0 && !isLoading && (
+        {!isFetchingHistory && !historyError && messages.length === 0 && !isSending && (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-16 animate-fade-in">
             <div className="animate-float w-20 h-20 rounded-3xl btn-gradient flex items-center justify-center mb-6 shadow-[0_8px_40px_rgba(99,102,241,0.4)]">
               <Sparkles size={34} className="text-white" />
@@ -175,51 +229,52 @@ export default function ChatInterface() {
         )}
 
         {/* Message bubbles */}
-        {messages.map((msg, idx) => (
-          <div
-            key={msg.id}
-            className={`flex gap-3 items-end animate-fade-in ${msg.role === "User" ? "justify-end" : "justify-start"}`}
-            style={{ animationDelay: `${idx * 0.02}s` }}
-          >
-            {/* AI avatar */}
-            {msg.role === "Assistant" && (
-              <div className="w-9 h-9 rounded-xl btn-gradient flex items-center justify-center shrink-0 shadow-[0_4px_16px_rgba(99,102,241,0.3)]">
-                <Bot size={15} className="text-white" />
-              </div>
-            )}
-
-            <div className="flex flex-col gap-1.5 max-w-[68%]">
-              {/* Source chip for AI */}
-              {msg.role === "Assistant" && hasDoc && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 self-start">
-                  <FileText size={9} /> {selectedDoc.doc_name}
-                </span>
+        {!isFetchingHistory &&
+          messages.map((msg, idx) => (
+            <div
+              key={msg.id}
+              className={`flex gap-3 items-end animate-fade-in ${msg.role === "User" ? "justify-end" : "justify-start"}`}
+              style={{ animationDelay: `${idx * 0.02}s` }}
+            >
+              {/* AI avatar */}
+              {msg.role === "Assistant" && (
+                <div className="w-9 h-9 rounded-xl btn-gradient flex items-center justify-center shrink-0 shadow-[0_4px_16px_rgba(99,102,241,0.3)]">
+                  <Bot size={15} className="text-white" />
+                </div>
               )}
-              <div
-                className={`
-                px-4 py-3.5 text-sm leading-relaxed
-                ${
-                  msg.role === "User"
-                    ? "rounded-[18px_18px_4px_18px] btn-gradient text-white shadow-[0_4px_20px_rgba(99,102,241,0.3)]"
-                    : "rounded-[4px_18px_18px_18px] bg-white/[0.04] border border-white/[0.08] text-slate-300"
-                }
-              `}
-              >
-                {msg.text}
+
+              <div className="flex flex-col gap-1.5 max-w-[68%]">
+                {/* Source chip for AI */}
+                {msg.role === "Assistant" && hasDoc && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 self-start">
+                    <FileText size={9} /> {selectedDoc.doc_name}
+                  </span>
+                )}
+                <div
+                  className={`
+                  px-4 py-3.5 text-sm leading-relaxed
+                  ${
+                    msg.role === "User"
+                      ? "rounded-[18px_18px_4px_18px] btn-gradient text-white shadow-[0_4px_20px_rgba(99,102,241,0.3)]"
+                      : "rounded-[4px_18px_18px_18px] bg-white/[0.04] border border-white/[0.08] text-slate-300"
+                  }
+                `}
+                >
+                  {msg.text}
+                </div>
               </div>
+
+              {/* User avatar */}
+              {msg.role === "User" && (
+                <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
+                  <User size={15} className="text-slate-500" />
+                </div>
+              )}
             </div>
+          ))}
 
-            {/* User avatar */}
-            {msg.role === "User" && (
-              <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
-                <User size={15} className="text-slate-500" />
-              </div>
-            )}
-          </div>
-        ))}
-
-        {/* Loading dots */}
-        {isLoading && (
+        {/* AI thinking dots */}
+        {isSending && (
           <div className="flex gap-3 items-end animate-fade-in">
             <div className="w-9 h-9 rounded-xl btn-gradient flex items-center justify-center shrink-0 shadow-[0_4px_16px_rgba(99,102,241,0.3)]">
               <Bot size={15} className="text-white" />
@@ -256,7 +311,7 @@ export default function ChatInterface() {
             className={`
             rounded-2xl border overflow-hidden transition-all duration-200
             ${
-              hasDoc
+              hasDoc && !isFetchingHistory
                 ? "bg-white/[0.05] border-white/[0.09] focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10"
                 : "bg-white/[0.02] border-white/[0.05] opacity-50 pointer-events-none"
             }
@@ -267,9 +322,11 @@ export default function ChatInterface() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={!hasDoc}
+              disabled={!hasDoc || isSending || isFetchingHistory}
               placeholder={
-                hasDoc
+                isFetchingHistory
+                  ? "Loading conversation…"
+                  : hasDoc
                   ? `Ask about "${selectedDoc?.doc_name}"…`
                   : "Select a document to start chatting…"
               }
@@ -301,17 +358,21 @@ export default function ChatInterface() {
               <button
                 id="send-btn"
                 onClick={handleSend}
-                disabled={!query.trim() || isLoading || !hasDoc}
+                disabled={!query.trim() || isSending || !hasDoc || isFetchingHistory}
                 className={`
                   w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200
                   ${
-                    query.trim() && !isLoading && hasDoc
+                    query.trim() && !isSending && hasDoc && !isFetchingHistory
                       ? "btn-gradient text-white shadow-[0_4px_16px_rgba(99,102,241,0.35)] hover:-translate-y-0.5 cursor-pointer"
                       : "bg-white/[0.04] border border-white/[0.09] text-slate-600 cursor-not-allowed"
                   }
                 `}
               >
-                <Send size={14} />
+                {isSending ? (
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Send size={14} />
+                )}
               </button>
             </div>
           </div>

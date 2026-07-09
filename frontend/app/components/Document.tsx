@@ -9,6 +9,7 @@ import {
   MessageSquare,
   AlertCircle,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { deleteDoc, getAllDocs, uploadDoc } from "../api/api";
@@ -43,6 +44,9 @@ export default function Documents() {
   const [isUploading, setIsUploading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const { setDocument, selectedDoc, clearDocument } = useDocumentStore();
   const { getToken } = useAuth();
   const { SetComponent } = useComponentStore();
@@ -62,17 +66,15 @@ export default function Documents() {
   const handleDeleteDoc = async (doc_id: string) => {
     const token = await getToken();
     setDeletingId(doc_id);
+    setDeleteError(null);
     try {
       const data = await deleteDoc(token, doc_id);
       if (data.success) {
         setDocuments((prev) => prev.filter((d) => d.doc_id !== doc_id));
-        // If the deleted doc was selected in chat, clear it
-        if (selectedDoc?.doc_id === doc_id) {
-          clearDocument();
-        }
+        if (selectedDoc?.doc_id === doc_id) clearDocument();
       }
-    } catch (err) {
-      console.error("Delete failed:", err);
+    } catch {
+      setDeleteError("Failed to delete document. Please try again.");
     } finally {
       setDeletingId(null);
     }
@@ -80,16 +82,16 @@ export default function Documents() {
   const handleUploadDoc = async () => {
     if (!file) return;
     setIsUploading(true);
+    setUploadError(null);
     const token = await getToken();
     try {
       const data = await uploadDoc(file, token);
-      console.log("data", data);
       if (data.doc) {
         setDocuments((prev) => [...prev, data.doc]);
         setFile(null);
       }
-    } catch (err) {
-      console.log("err", err);
+    } catch {
+      setUploadError("Upload failed. Please check the file and try again.");
     } finally {
       setIsUploading(false);
     }
@@ -98,12 +100,13 @@ export default function Documents() {
   React.useEffect(() => {
     const getDocuments = async () => {
       setIsFetching(true);
+      setFetchError(null);
       const token = await getToken();
       try {
         const data = await getAllDocs(token);
         if (data.docs) setDocuments(data.docs);
-      } catch (err) {
-        console.log("err", err);
+      } catch {
+        setFetchError("Failed to load documents. Please try again.");
       } finally {
         setIsFetching(false);
       }
@@ -165,7 +168,7 @@ export default function Documents() {
         onDrop={handleDrop}
         onClick={() => !file && fileInputRef.current?.click()}
         className={`
-          mb-7 rounded-2xl border-2 border-dashed p-10 text-center transition-all duration-200 cursor-pointer
+          mb-2 rounded-2xl border-2 border-dashed p-10 text-center transition-all duration-200 cursor-pointer
           ${
             isDragging
               ? "border-indigo-500 bg-indigo-500/10"
@@ -239,6 +242,17 @@ export default function Documents() {
         )}
       </div>
 
+      {/* ── Upload error ── */}
+      {uploadError && (
+        <div className="mb-5 flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm animate-fade-in">
+          <AlertCircle size={15} className="shrink-0" />
+          <span className="flex-1">{uploadError}</span>
+          <button onClick={() => setUploadError(null)} className="text-red-400/60 hover:text-red-400 cursor-pointer">
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
       {/* ── Search ── */}
       <div className="relative mb-6">
         <Search
@@ -253,6 +267,45 @@ export default function Documents() {
           className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl py-3 pl-11 pr-4 text-sm text-slate-200 placeholder:text-slate-600 outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10 transition-all duration-200"
         />
       </div>
+
+      {/* ── Fetch error ── */}
+      {fetchError && !isFetching && (
+        <div className="flex flex-col items-center justify-center py-12 gap-3 animate-fade-in">
+          <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+            <AlertCircle size={20} className="text-red-400" />
+          </div>
+          <p className="text-sm text-slate-500">{fetchError}</p>
+          <button
+            onClick={() => {
+              setFetchError(null);
+              const reload = async () => {
+                setIsFetching(true);
+                const token = await getToken();
+                try {
+                  const data = await getAllDocs(token);
+                  if (data.docs) setDocuments(data.docs);
+                } catch { setFetchError("Failed to load documents. Please try again."); }
+                finally { setIsFetching(false); }
+              };
+              reload();
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.1] text-slate-300 text-xs font-semibold hover:bg-white/[0.09] transition-colors cursor-pointer"
+          >
+            <RefreshCw size={12} /> Retry
+          </button>
+        </div>
+      )}
+
+      {/* ── Delete error ── */}
+      {deleteError && (
+        <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm animate-fade-in">
+          <AlertCircle size={15} className="shrink-0" />
+          <span className="flex-1">{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="text-red-400/60 hover:text-red-400 cursor-pointer">
+            <X size={13} />
+          </button>
+        </div>
+      )}
 
       {/* ── Table ── */}
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] overflow-hidden">
@@ -357,7 +410,7 @@ export default function Documents() {
                 </div>
 
                 {/* Size */}
-                <div className="text-sm text-slate-500">200 KB</div>
+                <div className="text-sm text-slate-500">—</div>
 
                 {/* Chat */}
                 <button

@@ -62,16 +62,17 @@ class DocumentService:
             conn.close()
 
     def retrieve_all(self, user_id):
+        conn = get_conn()
         try:
-            conn = get_conn()
             with conn.cursor() as curr:
                 curr.execute(
                     "SELECT * FROM documents WHERE user_id = %s",
                     (user_id,),
                 )
                 return curr.fetchall()
-        except:
+        except Exception:
             conn.rollback()
+            raise
         finally:
             conn.close()
 
