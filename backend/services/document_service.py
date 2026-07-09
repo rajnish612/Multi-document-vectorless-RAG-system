@@ -11,60 +11,53 @@ class DocumentService:
         self.pi_client = PageIndexClient(api_key=os.getenv("PAGE_INDEX_API"))
 
     def pdf_upload_service(self, file, userId, doc_name):
+        # Submit to PageIndex first — outside try/except so conn is never
+        # referenced before assignment if this call fails.
+        result = self.pi_client.submit_document(file)
+        doc_id = result["doc_id"]
+        conn = get_conn()
         try:
-            result = self.pi_client.submit_document(file)
-            print("result", result)
-            doc_id = result["doc_id"]
-            conn = get_conn()
             with conn.cursor() as curr:
                 curr.execute(
                     "INSERT INTO documents (user_id, doc_id, doc_name) VALUES (%s, %s, %s) RETURNING *",
-                    (
-                        userId,
-                        doc_id,
-                        doc_name,
-                    ),
+                    (userId, doc_id, doc_name),
                 )
                 doc = curr.fetchone()
             conn.commit()
-            conn.close()
             return doc
-        except:
+        except Exception:
             conn.rollback()
+            raise
         finally:
             conn.close()
 
     def retrieve_doc(self, userId, doc_id):
+        conn = get_conn()
         try:
-            conn = get_conn()
             with conn.cursor() as curr:
                 curr.execute(
-                    "SELECT * FROM documents WHERE userId = %s AND docId = %s",
-                    (
-                        userId,
-                        doc_id,
-                    ),
+                    "SELECT * FROM documents WHERE user_id = %s AND doc_id = %s",
+                    (userId, doc_id),
                 )
                 return curr.fetchone()
-        except:
-            conn.rollback
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             conn.close()
 
     def search_docs(self, user_id, query):
+        conn = get_conn()
         try:
-            conn = get_conn()
             with conn.cursor() as curr:
                 curr.execute(
-                    "SELECT * FROM documents WHERE doc_name LIKE 's%' AND user_id = %s",
-                    (
-                        query,
-                        user_id,
-                    ),
+                    "SELECT * FROM documents WHERE doc_name ILIKE %s AND user_id = %s",
+                    (f"%{query}%", user_id),
                 )
                 return curr.fetchall()
-        except:
+        except Exception:
             conn.rollback()
+            raise
         finally:
             conn.close()
 

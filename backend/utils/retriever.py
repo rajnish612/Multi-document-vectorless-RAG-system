@@ -100,15 +100,19 @@ def _redis_set(key: str, value, ttl: int = 86400):
 # BM25 cache helpers
 # ---------------------------------------------------------------------------
 
-def _get_bm25(doc_id: str, flat_tree: list) -> bm25s.BM25:
-    """Return cached BM25 index for doc_id, building it if needed."""
+def _get_bm25(doc_id: str, flat_tree: list) -> bm25s.BM25 | None:
+    """Return cached BM25 index for doc_id, building it if needed.
+    Returns None if the corpus is empty (document still processing).
+    """
     if doc_id in _bm25_cache:
         cached_bm25, cached_tree = _bm25_cache[doc_id]
-        # Invalidate if the tree has changed (e.g. doc re-uploaded)
         if len(cached_tree) == len(flat_tree):
             return cached_bm25
 
     corpus = create_corpus(flat_tree)
+    if not corpus:
+        return None
+
     corpus_tokens = bm25s.tokenize(corpus)
     bm25_index = bm25s.BM25()
     bm25_index.index(corpus_tokens)
@@ -131,16 +135,24 @@ def retriever(query: str, doc_id: str, k: int = 3) -> str:
         index_tree = tree_result.get("result", [])
         retrieval_tree = create_retrievel_tree(index_tree)
         flat_tree = flatten_tree(retrieval_tree)
-        _redis_set(f"flat_tree:{doc_id}", flat_tree)
+        # Only cache once PageIndex has actually finished processing
+        if flat_tree:
+            _redis_set(f"flat_tree:{doc_id}", flat_tree)
     else:
         print(f"[Retriever] Cache hit for {doc_id}")
 
-    # 2. Get (or build) the BM25 index — cached in memory per doc_id
-    bm25_index = _get_bm25(doc_id, flat_tree)
+    # 2. Filter out nodes with empty corpus_text before indexing.
+    #    BM25 indices must align with the same list used for lookup.
+    indexable = [node for node in flat_tree if node["corpus_text"].strip()]
 
-    # 3. Retrieve top-k nodes
+    bm25_index = _get_bm25(doc_id, indexable)
+    if bm25_index is None:
+        return "Document is still being processed. Please wait a moment and try again."
+
+    # 3. Retrieve top-k nodes — cap k to available nodes
+    k = min(k, len(indexable))
     query_tokens = bm25s.tokenize(query)
     results, scores = bm25_index.retrieve(query_tokens, k=k)
-    matched_nodes = find_nodes_by_idx(flat_tree, results)
+    matched_nodes = find_nodes_by_idx(indexable, results)  # same list as index
 
     return build_context(matched_nodes)

@@ -200,7 +200,9 @@ def chat(request: Request, doc_id, query):
             "messages": [],
             "doc_id": doc_id,
         },
-        {"configurable": {"thread_id": user["user_id"]}},
+        # Scope conversation history per user+document so different
+        # documents don't bleed into each other's chat history.
+        {"configurable": {"thread_id": f"{user['user_id']}:{doc_id}"}},
     )
     message = message_service.save_message(
         user["user_id"],
@@ -212,7 +214,7 @@ def chat(request: Request, doc_id, query):
         raise HTTPException(404, detail="unable to send message")
     return {
         "data": message["assistant_message"],
-        "sucess": True,
+        "success": True,
         "message": "successfully sent message",
     }
 
@@ -221,10 +223,8 @@ def chat(request: Request, doc_id, query):
 def get_all_messages(request: Request, doc_id):
     user = request.state.user
     messages = message_service.get_messages(user["user_id"], doc_id)
-    if not messages:
-        raise HTTPException(422, detail="Unable to retrieve messages")
     return {
-        "data": messages,
-        "sucess": True,
-        "message": "successfully sent message",
+        "data": messages or [],
+        "success": True,
+        "message": "messages retrieved successfully",
     }
