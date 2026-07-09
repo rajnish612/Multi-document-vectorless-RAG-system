@@ -5,7 +5,7 @@ const axiosInstance = axios.create({
   timeout: 30000,
 });
 
-export const uploadDoc = async (doc, token) => {
+export const uploadDoc = async (doc: File, token: string) => {
   try {
     const formData = new FormData();
     formData.append("pdf", doc);
@@ -20,7 +20,7 @@ export const uploadDoc = async (doc, token) => {
     throw err;
   }
 };
-export const getAllDocs = async (token) => {
+export const getAllDocs = async (token: string) => {
   try {
     const res = await axiosInstance.get("/api/docs", {
       headers: {
@@ -33,7 +33,7 @@ export const getAllDocs = async (token) => {
     throw err;
   }
 };
-export const chat = async (token, doc_id, query) => {
+export const chat = async (token: string, doc_id: string, query: string) => {
   try {
     const res = await axiosInstance.post(
       `/api/chat/${doc_id}?query=${query}`,
@@ -51,7 +51,7 @@ export const chat = async (token, doc_id, query) => {
   }
 };
 
-export const getAllMessages = async (token, doc_id) => {
+export const getAllMessages = async (token: string, doc_id: string) => {
   try {
     const res = await axiosInstance.get(
       `/api/chat/messages?doc_id=${doc_id}`,

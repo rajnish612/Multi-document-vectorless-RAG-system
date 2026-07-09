@@ -67,6 +67,7 @@ export default function Documents() {
   };
   const handleDeleteDoc = async (doc_id: string) => {
     const token = await getToken();
+    if (!token) return;
     setDeletingId(doc_id);
     setDeleteError(null);
     try {
@@ -86,6 +87,7 @@ export default function Documents() {
     setIsUploading(true);
     setUploadError(null);
     const token = await getToken();
+    if (!token) return;
     try {
       const data = await uploadDoc(file, token);
       if (data.doc) {
@@ -104,6 +106,7 @@ export default function Documents() {
       setIsFetching(true);
       setFetchError(null);
       const token = await getToken();
+      if (!token) return;
       try {
         const data = await getAllDocs(token);
         if (data.docs) setDocuments(data.docs);
@@ -286,6 +289,7 @@ export default function Documents() {
               const reload = async () => {
                 setIsFetching(true);
                 const token = await getToken();
+                if (!token) return;
                 try {
                   const data = await getAllDocs(token);
                   if (data.docs) setDocuments(data.docs);

@@ -9,7 +9,7 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { chat, getAllMessages } from "../api/api";
 import { useDocumentStore } from "../zustand/stores/DocumentStore";
@@ -51,12 +51,13 @@ export default function ChatInterface() {
   }, [messages, isSending]);
 
   // Fetch history whenever the selected document changes
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     if (!selectedDoc?.doc_id) return;
     setIsFetchingHistory(true);
     setHistoryError(null);
     try {
       const token = await getToken();
+      if (!token) return;
       const data = await getAllMessages(token, selectedDoc.doc_id);
       setMessages(data.data ?? []);
     } catch {
@@ -64,27 +65,30 @@ export default function ChatInterface() {
     } finally {
       setIsFetchingHistory(false);
     }
-  };
+  }, [getToken, selectedDoc]);
+  // async () =>
 
   useEffect(() => {
-    setMessages([]);
+    // setMessages([]);
     fetchMessages();
-  }, [selectedDoc?.doc_id]);
+  }, [fetchMessages]);
 
   const handleSend = async () => {
     if (!query.trim() || !hasDoc || isSending) return;
     const token = await getToken();
+    if (!token) return;
     const userMsg: Message = {
       id: Date.now().toString(),
       role: "User",
       text: query,
     };
     setMessages((prev) => [...prev, userMsg]);
-    setQuery("");
     setIsSending(true);
     try {
       const data = await chat(token, selectedDoc.doc_id, query);
+
       setMessages((prev) => [...prev, data.data]);
+      setQuery("");
     } catch {
       setMessages((prev) => [
         ...prev,
