@@ -15,6 +15,7 @@ import { useRef, useState } from "react";
 import { deleteDoc, getAllDocs, uploadDoc } from "../api/api";
 import { useDocumentStore } from "../zustand/stores/DocumentStore";
 import { useComponentStore } from "../zustand/stores/ComponentStore";
+import { useRouter } from "next/navigation";
 
 type Document = {
   doc_id: string;
@@ -38,6 +39,7 @@ const EXT_ICON_COLORS: Record<string, string> = {
 export default function Documents() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<null | File>(null);
+  const router = useRouter();
   const [documents, setDocuments] = React.useState<Document[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDragging, setIsDragging] = useState(false);
@@ -247,7 +249,10 @@ export default function Documents() {
         <div className="mb-5 flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm animate-fade-in">
           <AlertCircle size={15} className="shrink-0" />
           <span className="flex-1">{uploadError}</span>
-          <button onClick={() => setUploadError(null)} className="text-red-400/60 hover:text-red-400 cursor-pointer">
+          <button
+            onClick={() => setUploadError(null)}
+            className="text-red-400/60 hover:text-red-400 cursor-pointer"
+          >
             <X size={13} />
           </button>
         </div>
@@ -284,8 +289,11 @@ export default function Documents() {
                 try {
                   const data = await getAllDocs(token);
                   if (data.docs) setDocuments(data.docs);
-                } catch { setFetchError("Failed to load documents. Please try again."); }
-                finally { setIsFetching(false); }
+                } catch {
+                  setFetchError("Failed to load documents. Please try again.");
+                } finally {
+                  setIsFetching(false);
+                }
               };
               reload();
             }}
@@ -301,7 +309,10 @@ export default function Documents() {
         <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm animate-fade-in">
           <AlertCircle size={15} className="shrink-0" />
           <span className="flex-1">{deleteError}</span>
-          <button onClick={() => setDeleteError(null)} className="text-red-400/60 hover:text-red-400 cursor-pointer">
+          <button
+            onClick={() => setDeleteError(null)}
+            className="text-red-400/60 hover:text-red-400 cursor-pointer"
+          >
             <X size={13} />
           </button>
         </div>
@@ -418,6 +429,7 @@ export default function Documents() {
                   onClick={() => {
                     setDocument({ doc_id: doc.doc_id, doc_name: doc.doc_name });
                     SetComponent("chats");
+                    router.push("/main/chat");
                   }}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-500/12 border border-indigo-500/20 text-indigo-300 text-xs font-semibold hover:bg-indigo-500/25 transition-colors duration-150 cursor-pointer"
                 >

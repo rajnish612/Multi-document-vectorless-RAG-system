@@ -4,8 +4,10 @@ import { useComponentStore } from "../zustand/stores/ComponentStore";
 import ChatInterface from "./Chats";
 import Documents from "./Document";
 import { FileText, MessageSquare, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 function WelcomeScreen() {
+  const router = useRouter();
   const { SetComponent } = useComponentStore();
   return (
     <div className="flex-1 flex flex-col items-center justify-center bg-[#0d0f1a] px-6 py-16 animate-fade-in">
@@ -21,14 +23,20 @@ function WelcomeScreen() {
       <div className="flex gap-3 flex-wrap justify-center">
         <button
           id="go-to-documents"
-          onClick={() => SetComponent("document")}
+          onClick={() => {
+            SetComponent("document");
+            router.push("/main/documents");
+          }}
           className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl btn-gradient text-white font-semibold text-sm transition-all duration-200 hover:-translate-y-0.5 shadow-[0_4px_20px_rgba(99,102,241,0.4)] cursor-pointer"
         >
           <FileText size={15} /> Upload Documents
         </button>
         <button
           id="go-to-chat"
-          onClick={() => SetComponent("chats")}
+          onClick={() => {
+            SetComponent("chats");
+            router.push("/main/chat");
+          }}
           className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white/[0.05] border border-white/[0.1] text-slate-300 font-semibold text-sm hover:bg-white/[0.09] hover:text-slate-100 transition-all duration-200 cursor-pointer"
         >
           <MessageSquare size={15} /> Open Chat
@@ -41,14 +49,7 @@ function WelcomeScreen() {
 const Home = () => {
   const { SelectedComponent } = useComponentStore();
 
-  switch (SelectedComponent) {
-    case "document":
-      return <div className="flex-1 flex min-w-0"><Documents /></div>;
-    case "chats":
-      return <div className="flex-1 flex min-w-0"><ChatInterface /></div>;
-    default:
-      return <div className="flex-1 flex min-w-0"><WelcomeScreen /></div>;
-  }
+  return <WelcomeScreen />;
 };
 
 export default Home;

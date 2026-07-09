@@ -14,6 +14,7 @@ import { useAuth } from "@clerk/nextjs";
 import { chat, getAllMessages } from "../api/api";
 import { useDocumentStore } from "../zustand/stores/DocumentStore";
 import { useComponentStore } from "../zustand/stores/ComponentStore";
+import { useRouter } from "next/navigation";
 
 type Message = { id: string; role: "User" | "Assistant"; text: string };
 
@@ -30,7 +31,7 @@ export default function ChatInterface() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
-
+  const router = useRouter();
   // Separate loading states — history fetch vs AI response
   const [isFetchingHistory, setIsFetchingHistory] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -127,7 +128,10 @@ export default function ChatInterface() {
           {/* Doc pill */}
           {hasDoc ? (
             <button
-              onClick={() => SetComponent("document")}
+              onClick={() => {
+                SetComponent("document");
+                router.push("/main/documents");
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-indigo-300 bg-indigo-500/12 border border-indigo-500/25 hover:bg-indigo-500/20 transition-colors duration-150 cursor-pointer max-w-[160px]"
             >
               <FileText size={11} />
@@ -135,7 +139,10 @@ export default function ChatInterface() {
             </button>
           ) : (
             <button
-              onClick={() => SetComponent("document")}
+              onClick={() => {
+                SetComponent("document");
+                router.push("/main/documents");
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/15 transition-colors duration-150 cursor-pointer"
             >
               <AlertCircle size={11} /> No document selected
@@ -200,33 +207,36 @@ export default function ChatInterface() {
         )}
 
         {/* Empty state */}
-        {!isFetchingHistory && !historyError && messages.length === 0 && !isSending && (
-          <div className="flex-1 flex flex-col items-center justify-center text-center py-16 animate-fade-in">
-            <div className="animate-float w-20 h-20 rounded-3xl btn-gradient flex items-center justify-center mb-6 shadow-[0_8px_40px_rgba(99,102,241,0.4)]">
-              <Sparkles size={34} className="text-white" />
-            </div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-slate-100 mb-2">
-              How can I help you today?
-            </h2>
-            <p className="text-sm text-slate-500 mb-9 max-w-xs leading-relaxed">
-              {hasDoc
-                ? `Chatting with "${selectedDoc.doc_name}"`
-                : "Select a document to start asking questions"}
-            </p>
+        {!isFetchingHistory &&
+          !historyError &&
+          messages.length === 0 &&
+          !isSending && (
+            <div className="flex-1 flex flex-col items-center justify-center text-center py-16 animate-fade-in">
+              <div className="animate-float w-20 h-20 rounded-3xl btn-gradient flex items-center justify-center mb-6 shadow-[0_8px_40px_rgba(99,102,241,0.4)]">
+                <Sparkles size={34} className="text-white" />
+              </div>
+              <h2 className="text-2xl font-extrabold tracking-tight text-slate-100 mb-2">
+                How can I help you today?
+              </h2>
+              <p className="text-sm text-slate-500 mb-9 max-w-xs leading-relaxed">
+                {hasDoc
+                  ? `Chatting with "${selectedDoc.doc_name}"`
+                  : "Select a document to start asking questions"}
+              </p>
 
-            <div className="grid grid-cols-2 gap-3 w-full max-w-md">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setQuery(s)}
-                  className="px-4 py-3.5 bg-white/[0.04] border border-white/[0.08] rounded-2xl text-slate-400 text-sm font-medium text-left hover:bg-white/[0.07] hover:border-indigo-500/40 hover:text-slate-200 transition-all duration-200 cursor-pointer"
-                >
-                  {s}
-                </button>
-              ))}
+              <div className="grid grid-cols-2 gap-3 w-full max-w-md">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setQuery(s)}
+                    className="px-4 py-3.5 bg-white/[0.04] border border-white/[0.08] rounded-2xl text-slate-400 text-sm font-medium text-left hover:bg-white/[0.07] hover:border-indigo-500/40 hover:text-slate-200 transition-all duration-200 cursor-pointer"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Message bubbles */}
         {!isFetchingHistory &&
@@ -298,7 +308,10 @@ export default function ChatInterface() {
           {/* No-doc warning */}
           {!hasDoc && (
             <button
-              onClick={() => SetComponent("document")}
+              onClick={() => {
+                SetComponent("document");
+                router.push("/main/documents");
+              }}
               className="w-full flex items-center justify-center gap-2.5 px-4 py-3 mb-3 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-sm font-semibold hover:bg-red-500/14 transition-colors duration-200 cursor-pointer"
             >
               <AlertCircle size={14} />
@@ -327,8 +340,8 @@ export default function ChatInterface() {
                 isFetchingHistory
                   ? "Loading conversation…"
                   : hasDoc
-                  ? `Ask about "${selectedDoc?.doc_name}"…`
-                  : "Select a document to start chatting…"
+                    ? `Ask about "${selectedDoc?.doc_name}"…`
+                    : "Select a document to start chatting…"
               }
               rows={3}
               className="w-full resize-none bg-transparent outline-none px-5 pt-4 pb-3 text-sm text-slate-200 placeholder:text-slate-600 disabled:cursor-not-allowed"
@@ -358,7 +371,9 @@ export default function ChatInterface() {
               <button
                 id="send-btn"
                 onClick={handleSend}
-                disabled={!query.trim() || isSending || !hasDoc || isFetchingHistory}
+                disabled={
+                  !query.trim() || isSending || !hasDoc || isFetchingHistory
+                }
                 className={`
                   w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200
                   ${

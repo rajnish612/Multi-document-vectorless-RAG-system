@@ -1,14 +1,35 @@
 "use client";
-import { MessageSquare, FileText, ChevronRight, Cpu, LogOut } from "lucide-react";
+import {
+  MessageSquare,
+  FileText,
+  ChevronRight,
+  Cpu,
+  LogOut,
+} from "lucide-react";
 import { useComponentStore } from "../zustand/stores/ComponentStore";
 import { useDocumentStore } from "../zustand/stores/DocumentStore";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const menuItems = [
-  { label: "Documents", component: "document", icon: FileText,     description: "Manage your knowledge base" },
-  { label: "Chat",      component: "chats",    icon: MessageSquare, description: "Ask questions with AI"      },
+const menuItems: Array<{
+  label: string;
+  component: "document" | "chats";
+  icon: any;
+  description: string;
+}> = [
+  {
+    label: "Documents",
+    component: "document",
+    icon: FileText,
+    description: "Manage your knowledge base",
+  },
+  {
+    label: "Chat",
+    component: "chats",
+    icon: MessageSquare,
+    description: "Ask questions with AI",
+  },
 ];
 
 export default function AppSidebar() {
@@ -35,7 +56,6 @@ export default function AppSidebar() {
 
   return (
     <aside className="w-64 min-w-[256px] h-screen flex flex-col sticky top-0 border-r border-white/[0.08] bg-[#07080f]/80 backdrop-blur-2xl">
-
       {/* ── Logo ── */}
       <div className="flex items-center gap-3 px-5 py-6 border-b border-white/[0.08]">
         <div className="w-10 h-10 rounded-xl btn-gradient flex items-center justify-center shrink-0 shadow-[0_4px_16px_rgba(99,102,241,0.35)]">
@@ -61,41 +81,61 @@ export default function AppSidebar() {
         <ul className="flex flex-col gap-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive  = SelectedComponent === item.component;
+            const isActive = SelectedComponent === item.component;
             const isHovered = hovered === item.component;
 
             return (
               <li key={item.label}>
                 <button
                   id={`nav-${item.component}`}
-                  onClick={() => SetComponent(item.component)}
+                  onClick={() => {
+                    SetComponent(item.component);
+                    switch (item.component) {
+                      case "document":
+                        router.push("/main/documents");
+                        break;
+                      case "chats":
+                        router.push("/main/chat");
+                    }
+                  }}
                   onMouseEnter={() => setHovered(item.component)}
                   onMouseLeave={() => setHovered(null)}
                   className={`
                     w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left
                     border-l-[3px] transition-all duration-200 cursor-pointer
-                    ${isActive
-                      ? "bg-indigo-500/15 border-indigo-500"
-                      : isHovered
-                      ? "bg-white/[0.07] border-transparent"
-                      : "bg-transparent border-transparent"
+                    ${
+                      isActive
+                        ? "bg-indigo-500/15 border-indigo-500"
+                        : isHovered
+                          ? "bg-white/[0.07] border-transparent"
+                          : "bg-transparent border-transparent"
                     }
                   `}
                 >
                   {/* Icon box */}
-                  <div className={`
+                  <div
+                    className={`
                     w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 border
-                    ${isActive
-                      ? "bg-indigo-500/25 border-indigo-500/40"
-                      : "bg-white/[0.04] border-white/[0.08]"
+                    ${
+                      isActive
+                        ? "bg-indigo-500/25 border-indigo-500/40"
+                        : "bg-white/[0.04] border-white/[0.08]"
                     }
-                  `}>
-                    <Icon size={15} className={isActive ? "text-indigo-400" : "text-slate-500"} />
+                  `}
+                  >
+                    <Icon
+                      size={15}
+                      className={
+                        isActive ? "text-indigo-400" : "text-slate-500"
+                      }
+                    />
                   </div>
 
                   {/* Label */}
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold truncate ${isActive ? "text-indigo-300" : "text-slate-400"}`}>
+                    <p
+                      className={`text-sm font-semibold truncate ${isActive ? "text-indigo-300" : "text-slate-400"}`}
+                    >
                       {item.label}
                     </p>
                     <p className="text-[11px] text-slate-600 truncate mt-0.5">
@@ -103,7 +143,12 @@ export default function AppSidebar() {
                     </p>
                   </div>
 
-                  {isActive && <ChevronRight size={13} className="text-indigo-400 shrink-0" />}
+                  {isActive && (
+                    <ChevronRight
+                      size={13}
+                      className="text-indigo-400 shrink-0"
+                    />
+                  )}
                 </button>
               </li>
             );
@@ -117,8 +162,12 @@ export default function AppSidebar() {
         <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07]">
           <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)] animate-pulse-dot shrink-0" />
           <div>
-            <p className="text-xs font-semibold text-slate-300">System Online</p>
-            <p className="text-[10px] text-slate-600">Vector-less RAG · Ready</p>
+            <p className="text-xs font-semibold text-slate-300">
+              System Online
+            </p>
+            <p className="text-[10px] text-slate-600">
+              Vector-less RAG · Ready
+            </p>
           </div>
         </div>
 
@@ -158,9 +207,10 @@ export default function AppSidebar() {
             className={`
               w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl
               border text-xs font-semibold transition-all duration-200 cursor-pointer
-              ${signingOut
-                ? "bg-white/[0.02] border-white/[0.05] text-slate-600 cursor-not-allowed"
-                : "bg-red-500/8 border-red-500/20 text-red-400 hover:bg-red-500/15 hover:border-red-500/35 hover:text-red-300 active:scale-[0.98]"
+              ${
+                signingOut
+                  ? "bg-white/[0.02] border-white/[0.05] text-slate-600 cursor-not-allowed"
+                  : "bg-red-500/8 border-red-500/20 text-red-400 hover:bg-red-500/15 hover:border-red-500/35 hover:text-red-300 active:scale-[0.98]"
               }
             `}
           >
