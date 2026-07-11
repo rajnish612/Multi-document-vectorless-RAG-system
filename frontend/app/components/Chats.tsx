@@ -13,7 +13,6 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { chat, getAllMessages } from "../api/api";
 import { useDocumentStore } from "../zustand/stores/DocumentStore";
-import { useComponentStore } from "../zustand/stores/ComponentStore";
 import { useRouter } from "next/navigation";
 
 type Message = { id: string; role: "User" | "Assistant"; text: string };
@@ -38,7 +37,6 @@ export default function ChatInterface() {
   const [historyError, setHistoryError] = useState<string | null>(null);
 
   const { selectedDoc } = useDocumentStore();
-  const { SetComponent } = useComponentStore();
 
   const hasDoc = !!(selectedDoc?.doc_id && selectedDoc?.doc_name);
 
@@ -132,10 +130,7 @@ export default function ChatInterface() {
           {/* Doc pill */}
           {hasDoc ? (
             <button
-              onClick={() => {
-                SetComponent("document");
-                router.push("/main/documents");
-              }}
+              onClick={() => router.push("/main/documents")}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-indigo-300 bg-indigo-500/12 border border-indigo-500/25 hover:bg-indigo-500/20 transition-colors duration-150 cursor-pointer max-w-[160px]"
             >
               <FileText size={11} />
@@ -143,10 +138,7 @@ export default function ChatInterface() {
             </button>
           ) : (
             <button
-              onClick={() => {
-                SetComponent("document");
-                router.push("/main/documents");
-              }}
+              onClick={() => router.push("/main/documents")}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/15 transition-colors duration-150 cursor-pointer"
             >
               <AlertCircle size={11} /> No document selected
@@ -312,10 +304,7 @@ export default function ChatInterface() {
           {/* No-doc warning */}
           {!hasDoc && (
             <button
-              onClick={() => {
-                SetComponent("document");
-                router.push("/main/documents");
-              }}
+              onClick={() => router.push("/main/documents")}
               className="w-full flex items-center justify-center gap-2.5 px-4 py-3 mb-3 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-sm font-semibold hover:bg-red-500/14 transition-colors duration-200 cursor-pointer"
             >
               <AlertCircle size={14} />

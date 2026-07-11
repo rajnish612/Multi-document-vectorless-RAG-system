@@ -14,7 +14,6 @@ import {
 import { useRef, useState } from "react";
 import { deleteDoc, getAllDocs, uploadDoc } from "../api/api";
 import { useDocumentStore } from "../zustand/stores/DocumentStore";
-import { useComponentStore } from "../zustand/stores/ComponentStore";
 import { useRouter } from "next/navigation";
 
 type Document = {
@@ -51,7 +50,7 @@ export default function Documents() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const { setDocument, selectedDoc, clearDocument } = useDocumentStore();
   const { getToken } = useAuth();
-  const { SetComponent } = useComponentStore();
+  const router = useRouter();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -431,7 +430,6 @@ export default function Documents() {
                   id={`chat-doc-${doc.doc_id}`}
                   onClick={() => {
                     setDocument({ doc_id: doc.doc_id, doc_name: doc.doc_name });
-                    SetComponent("chats");
                     router.push("/main/chat");
                   }}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-500/12 border border-indigo-500/20 text-indigo-300 text-xs font-semibold hover:bg-indigo-500/25 transition-colors duration-150 cursor-pointer"

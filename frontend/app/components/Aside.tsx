@@ -6,34 +6,33 @@ import {
   Cpu,
   LogOut,
 } from "lucide-react";
-import { useComponentStore } from "../zustand/stores/ComponentStore";
 import { useDocumentStore } from "../zustand/stores/DocumentStore";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 const menuItems: Array<{
   label: string;
-  component: "document" | "chats";
+  route: string;
   icon: any;
   description: string;
 }> = [
   {
     label: "Documents",
-    component: "document",
+    route: "/main/documents",
     icon: FileText,
     description: "Manage your knowledge base",
   },
   {
     label: "Chat",
-    component: "chats",
+    route: "/main/chat",
     icon: MessageSquare,
     description: "Ask questions with AI",
   },
 ];
 
 export default function AppSidebar() {
-  const { SetComponent, SelectedComponent } = useComponentStore();
+  const pathname = usePathname();
   const { clearDocument } = useDocumentStore();
   const { signOut } = useClerk();
   const { user } = useUser();
@@ -44,9 +43,7 @@ export default function AppSidebar() {
   const handleSignOut = async () => {
     setSigningOut(true);
     try {
-      // Clear all app state before signing out
       clearDocument();
-      SetComponent("document");
       await signOut();
       router.push("/");
     } catch {
@@ -81,24 +78,15 @@ export default function AppSidebar() {
         <ul className="flex flex-col gap-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = SelectedComponent === item.component;
-            const isHovered = hovered === item.component;
+            const isActive = pathname.startsWith(item.route);
+            const isHovered = hovered === item.route;
 
             return (
               <li key={item.label}>
                 <button
-                  id={`nav-${item.component}`}
-                  onClick={() => {
-                    SetComponent(item.component);
-                    switch (item.component) {
-                      case "document":
-                        router.push("/main/documents");
-                        break;
-                      case "chats":
-                        router.push("/main/chat");
-                    }
-                  }}
-                  onMouseEnter={() => setHovered(item.component)}
+                  id={`nav-${item.route.split("/").pop()}`}
+                  onClick={() => router.push(item.route)}
+                  onMouseEnter={() => setHovered(item.route)}
                   onMouseLeave={() => setHovered(null)}
                   className={`
                     w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left
