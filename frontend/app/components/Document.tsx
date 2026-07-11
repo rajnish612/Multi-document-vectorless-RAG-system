@@ -326,7 +326,7 @@ export default function Documents() {
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] overflow-hidden">
         {/* Header row */}
         <div className="grid grid-cols-[1fr_100px_80px_60px] gap-4 px-5 py-3.5 border-b border-white/[0.08] bg-white/[0.02]">
-          {["Document", "Size", "Chat", "Delete"].map((h) => (
+          {["Document", "Chat", "Delete"].map((h) => (
             <div
               key={h}
               className="text-[11px] font-bold uppercase tracking-widest text-slate-600"
@@ -425,7 +425,6 @@ export default function Documents() {
                 </div>
 
                 {/* Size */}
-                <div className="text-sm text-slate-500">—</div>
 
                 {/* Chat */}
                 <button
