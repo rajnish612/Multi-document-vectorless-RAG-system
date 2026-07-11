@@ -7,7 +7,7 @@ load_dotenv()
 GROQ_API = os.getenv("GROQ_API")
 
 
-model = ChatGroq(model="openai/gpt-oss-20b", api_key=GROQ_API)
+model = ChatGroq(model=os.getenv("GROQ_MODEL"), api_key=GROQ_API)
 query_optimizer = create_agent(
     model=model,
     system_prompt="""

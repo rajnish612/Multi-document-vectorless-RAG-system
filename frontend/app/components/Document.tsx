@@ -35,6 +35,12 @@ const EXT_ICON_COLORS: Record<string, string> = {
   TXT: "text-emerald-400",
 };
 
+// Hardcoded demo document — always visible, no delete button
+const DEMO_DOC = {
+  doc_id: "pi-cmpxt6mh203aw01qub020kffu",
+  doc_name: "Apple.pdf",
+};
+
 export default function Documents() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<null | File>(null);
@@ -50,7 +56,6 @@ export default function Documents() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const { setDocument, selectedDoc, clearDocument } = useDocumentStore();
   const { getToken } = useAuth();
-  const router = useRouter();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -386,6 +391,46 @@ export default function Documents() {
                 ? "No documents match your search"
                 : "No documents uploaded yet"}
             </p>
+          </div>
+        )}
+
+        {/* ── Pinned demo row ── */}
+        {!isFetching && "apple.pdf".includes(searchQuery.toLowerCase()) && (
+          <div className="grid grid-cols-[1fr_100px_80px_60px] gap-4 px-5 py-4 border-b border-white/[0.06] items-center hover:bg-white/[0.03] transition-colors duration-150">
+            {/* Name */}
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border text-red-400 bg-red-400/10 border-red-400/20">
+                <FileText size={16} className="text-red-400" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-200 truncate">
+                    {DEMO_DOC.doc_name}
+                  </p>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border text-amber-400 bg-amber-400/10 border-amber-400/20 shrink-0">
+                    DEMO
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border text-red-400 bg-red-400/10 border-red-400/20">
+                  PDF
+                </span>
+              </div>
+            </div>
+            {/* Size */}
+            <div className="text-sm text-slate-500">—</div>
+            {/* Chat */}
+            <button
+              id="chat-doc-demo"
+              onClick={() => {
+                setDocument({ doc_id: DEMO_DOC.doc_id, doc_name: DEMO_DOC.doc_name });
+                router.push("/main/chat");
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-500/12 border border-indigo-500/20 text-indigo-300 text-xs font-semibold hover:bg-indigo-500/25 transition-colors duration-150 cursor-pointer"
+            >
+              <MessageSquare size={11} /> Chat
+            </button>
+            {/* No delete for demo */}
+            <div className="w-9 h-9" />
           </div>
         )}
 
